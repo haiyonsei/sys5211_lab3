@@ -13,7 +13,7 @@ The lab consists of the following files:
 - **Main Sources**
   - `src/main/scala/npu/EmitVerilog.scala` – Entry point for Verilog generation from Chisel
   - `src/main/scala/npu/ReservationStation.scala` – Scala implementation of the ReservationStation logic
-  - `src/main/verilog/SimpleReservationStation.v` – Verilog version of the top-level scratchpad 
+  - `src/main/verilog/SimpleReservationStation.v` – Verilog version of the top-level reservation station
 - **Test Sources**
   - `src/test/scala/npu/ReservationStationSpec.scala` – Scala test specification
   - `src/test/verilog/tb_reservation_station.sv` – Verilog testbench for simulation
