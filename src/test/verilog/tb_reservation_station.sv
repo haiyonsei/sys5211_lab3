@@ -1,28 +1,19 @@
 
 `timescale 1ns/1ps
 
-/**
- * DUT: SimpleReservationStation
- * 이 테스트벤치는 제공된 Verilog 인터페이스를 기반으로 SimpleReservationStation의 동작을 검증합니다.
- * 원본 Chisel 테스트 코드의 세 가지 주요 시나리오를 SystemVerilog로 변환했습니다.
- */
 module tb_SimpleReservationStation;
 
-  // 파라미터
   localparam ADDR_WIDTH = 16;
-  localparam ROB_ID_WIDTH = 3; // DUT 인터페이스에 맞춰 3으로 수정
+  localparam ROB_ID_WIDTH = 3;
   localparam CLK_PERIOD = 10;
 
-  // 명령어 타입 상수
   localparam [1:0] Q_LD = 2'd0;
   localparam [1:0] Q_EX = 2'd1;
   localparam [1:0] Q_ST = 2'd2;
 
-  // 클럭 및 리셋 신호
   logic clk;
-  logic reset; // Active-high reset
+  logic reset;
 
-  // DUT 인터페이스 신호
   // Alloc Interface
   logic                       io_alloc_ready;
   logic                       io_alloc_valid;
@@ -82,7 +73,6 @@ module tb_SimpleReservationStation;
   logic                       io_busy;
 
 
-  // DUT (Device Under Test) 인스턴스화
   SimpleReservationStation dut (
     .clock(clk),
     .reset(reset),
@@ -140,7 +130,6 @@ module tb_SimpleReservationStation;
     .io_busy(io_busy)
   );
 
-  // 클럭 생성기
   initial begin
     clk = 0;
     forever #(CLK_PERIOD/2) clk = ~clk;
@@ -150,7 +139,6 @@ module tb_SimpleReservationStation;
   // =============== Helper Tasks =====================
   // ==================================================
 
-  // DUT 리셋 태스크
   task reset_dut();
     reset <= 1'b1;
     repeat(2) @(posedge clk);
@@ -158,7 +146,6 @@ module tb_SimpleReservationStation;
     $display("[%0t] DUT Reset", $time);
   endtask
 
-  // 명령어 할당 태스크
   task poke_cmd(
     input [1:0] q,
     input logic opaValid,
@@ -188,7 +175,6 @@ module tb_SimpleReservationStation;
   // ================= Test Tasks =====================
   // ==================================================
 
-  // 테스트 1: RAW 해저드
   task test_raw_hazard();
     logic [ROB_ID_WIDTH-1:0] ld_rob;
     bit ld_issued = 0;
@@ -229,7 +215,6 @@ module tb_SimpleReservationStation;
     $display("[%0t] PASS: EX issued after LD completion", $time);
   endtask
 
-  // 테스트 2: LD 큐 순차적 실행
   task test_in_order_issue();
     logic [ROB_ID_WIDTH-1:0] ld0_rob, ld1_rob;
     $display("[%0t] Starting test: 'enforce in-order ISSUE within LD queue'", $time);
@@ -247,7 +232,6 @@ module tb_SimpleReservationStation;
     $display("[%0t] PASS: LD queue issued in-order", $time);
   endtask
 
-  // 테스트 3: EX-ST 데이터 의존성
   task test_dependency_hazard();
     logic [ROB_ID_WIDTH-1:0] ex_rob;
     bit st_issued = 0;
@@ -286,7 +270,6 @@ module tb_SimpleReservationStation;
   initial begin
     $display("Starting SystemVerilog Testbench for SimpleReservationStation...");
     
-    // 초기화
     reset_dut();
     io_alloc_valid <= 1'b0;
     io_issue_ld_ready <= 1'b0;
@@ -294,7 +277,6 @@ module tb_SimpleReservationStation;
     io_issue_st_ready <= 1'b0;
     io_completed_valid <= 1'b0;
     
-    // --- 테스트 1 실행 ---
     io_issue_ld_ready <= 1'b1;
     io_issue_ex_ready <= 1'b1;
     io_issue_st_ready <= 1'b1;
@@ -302,7 +284,6 @@ module tb_SimpleReservationStation;
     @(posedge clk);
     $display("\n--------------------------------\n");
     
-    // --- 테스트 2 실행 ---
     reset_dut();
     io_issue_ld_ready <= 1'b1;
     io_issue_ex_ready <= 1'b1;
@@ -311,7 +292,6 @@ module tb_SimpleReservationStation;
     @(posedge clk);
     $display("\n--------------------------------\n");
     
-    // --- 테스트 3 실행 ---
     reset_dut();
     io_issue_ld_ready <= 1'b1;
     io_issue_ex_ready <= 1'b1;
