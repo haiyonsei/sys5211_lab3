@@ -4,15 +4,13 @@ import chisel3._
 import chisel3.util._
 
 /**
-  * Teaching-friendly, minimal Reservation Station capturing the core ideas:
+  * Reservation Station capturing the core ideas:
   *  - Three queues (LD / EX / ST) with small fixed depths
   *  - Interval-based hazard detection (RAW/WAR/WAW via overlap)
   *  - Same-queue deps cleared on ISSUE (in-order issue)
   *  - Cross-queue deps cleared on COMPLETION
   *  - One issue per queue per cycle (priority = lowest index)
   *  - Simple ROB id encoding: { qType[1:0], index[log2(Nmax)-1:0] }
-  *
-  * The design avoids Gemmini/ROCC specifics to keep it self-contained for class use.
   */
 
 // ----------------------------
@@ -35,7 +33,7 @@ class SimpleRSCmd(addrW: Int) extends Bundle {
   val qType     = UInt(2.W)              // 0=LD, 1=EX, 2=ST
   val opa       = new SimpleRSInterval(addrW)
   val opb       = new SimpleRSInterval(addrW)
-  val opaIsDst  = Bool()                 // true for EX-preload semantics
+  val opaIsDst  = Bool()
 }
 
 class ReservationStationIssue[T <: Data](cmd_t: T, idWidth: Int) extends Bundle {
@@ -130,25 +128,24 @@ class SimpleReservationStation(
     newE.deps_ld := VecInit(ldQ.map(e => e.valid && !e.bits.issued)) // in-order LD queue
     // deps relations vs EX & ST
     val ld_vs_ex = exQ.map { e => e.valid && (overlaps(newE.opa, e.bits.opa) || overlaps(newE.opa, e.bits.opb)) }
-    val ex_vs_ld = ldQ.map { e => e.valid && (overlaps(newE.opa, e.bits.opa) || overlaps(newE.opb, e.bits.opa)) } // RAW
-    val st_vs_ex = exQ.map { e => e.valid && e.bits.opaIsDst && overlaps(newE.opa, e.bits.opa) } // RAW
-    val ld_vs_st = stQ.map { e => e.valid && overlaps(newE.opa, e.bits.opa) } // WAR
-    val ex_vs_st = stQ.map { e => e.valid && newE.opaIsDst && overlaps(newE.opa, e.bits.opa) } // WAR
+    val ex_vs_ld = ldQ.map { e => e.valid && (overlaps(newE.opa, e.bits.opa) || overlaps(newE.opb, e.bits.opa)) }
+    val st_vs_ex = exQ.map { e => e.valid && e.bits.opaIsDst && overlaps(newE.opa, e.bits.opa) }
+    val ld_vs_st = stQ.map { e => e.valid && overlaps(newE.opa, e.bits.opa) }
+    val ex_vs_st = stQ.map { e => e.valid && newE.opaIsDst && overlaps(newE.opa, e.bits.opa) }
 
     when(isLD) {
       newE.deps_ex := VecInit(ld_vs_ex)
       newE.deps_st := VecInit(ld_vs_st)
     }.elsewhen(isEX) {
-      newE.deps_ex := VecInit(exQ.map(e => e.valid && !e.bits.issued)) // in-order EX queue
+      newE.deps_ex := VecInit(exQ.map(e => e.valid && !e.bits.issued))
       newE.deps_st := VecInit(ex_vs_st)
       newE.deps_ld := VecInit(ex_vs_ld)
-    }.otherwise { // ST
+    }.otherwise {
       newE.deps_ex := VecInit(st_vs_ex)
-      newE.deps_st := VecInit(stQ.map(e => e.valid && !e.bits.issued)) // in-order ST queue
+      newE.deps_st := VecInit(stQ.map(e => e.valid && !e.bits.issued))
       newE.deps_ld := VecInit(ld_vs_st)
     }
 
-    // choose queue and allocate to first free slot
     val ldFreeOH = VecInit(ldQ.map(e => !e.valid))
     val exFreeOH = VecInit(exQ.map(e => !e.valid))
     val stFreeOH = VecInit(stQ.map(e => !e.valid))
